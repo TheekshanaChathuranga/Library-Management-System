@@ -11,6 +11,9 @@ INSERT INTO Categories (category_name, description) VALUES
 ('Reference', 'Dictionaries, encyclopedias, and reference materials'),
 ('Business', 'Business, management, and economics');
 
+-- Insert sample categories
+INSERT INTO Categories (category_name) VALUES ('Fiction'), ('Non-Fiction'), ('Science'), ('History');
+
 -- Insert Authors
 INSERT INTO Authors (author_name, biography, country) VALUES
 ('J.K. Rowling', 'British author best known for Harry Potter series', 'United Kingdom'),
@@ -23,6 +26,9 @@ INSERT INTO Authors (author_name, biography, country) VALUES
 ('Jane Austen', 'English novelist', 'United Kingdom'),
 ('William Shakespeare', 'English playwright and poet', 'United Kingdom'),
 ('Ernest Hemingway', 'American novelist and journalist', 'United States');
+
+-- Insert sample authors
+INSERT INTO Authors (author_name) VALUES ('J.K. Rowling'), ('George Orwell'), ('Isaac Newton'), ('Albert Einstein');
 
 -- Insert Books
 INSERT INTO Books (ISBN, title, category_id, publisher, publication_year, total_copies, available_copies, price, location) VALUES
@@ -42,6 +48,12 @@ INSERT INTO Books (ISBN, title, category_id, publisher, publication_year, total_
 ('978-0345391803', 'The Hitchhiker''s Guide to the Galaxy', 3, 'Del Rey', 1979, 3, 3, 17.99, 'B-210'),
 ('978-0316769174', 'The Catcher in the Rye', 1, 'Little, Brown', 1951, 4, 4, 14.99, 'A-395');
 
+-- Insert sample books
+INSERT INTO Books (ISBN, title, category_id, publisher, publication_year, total_copies, available_copies, price)
+VALUES
+('9780439139601', 'Harry Potter and the Goblet of Fire', 1, 'Bloomsbury', 2000, 10, 10, 20.99),
+('9780451524935', '1984', 2, 'Secker & Warburg', 1949, 5, 5, 15.99);
+
 -- Link Books with Authors
 INSERT INTO Book_Authors (book_id, author_id) VALUES
 (1, 1),  -- Harry Potter - J.K. Rowling
@@ -55,6 +67,11 @@ INSERT INTO Book_Authors (book_id, author_id) VALUES
 (10, 9), -- Romeo and Juliet - Shakespeare
 (11, 10),-- The Old Man and the Sea - Hemingway
 (12, 4); -- Homo Deus - Yuval Noah Harari
+
+-- Link books to authors
+INSERT INTO Book_Authors (book_id, author_id) VALUES
+(1, 1), -- Harry Potter -> J.K. Rowling
+(2, 2); -- 1984 -> George Orwell
 
 -- Insert Staff (Password: admin123 for all - hashed with bcrypt)
 -- Note: You should generate real bcrypt hashes. This is example only.
@@ -74,6 +91,12 @@ INSERT INTO Members (first_name, last_name, email, phone, membership_type, join_
 ('Sarah', 'Davis', 'sarah.d@email.com', '5553691470', 'Teacher', '2024-03-10', '2025-03-10', '987 Cedar Ln, City, State'),
 ('David', 'Miller', 'david.m@email.com', '5557412580', 'Student', '2024-03-20', '2025-03-20', '147 Birch Ct, City, State'),
 ('Lisa', 'Wilson', 'lisa.w@email.com', '5558523691', 'General', '2024-04-01', '2025-04-01', '258 Spruce Way, City, State');
+
+-- Insert sample members
+INSERT INTO Members (first_name, last_name, email, password, status)
+VALUES
+('John', 'Doe', 'john.doe@example.com', '$2b$10$examplehashedpassword', 'Active'),
+('Jane', 'Smith', 'jane.smith@example.com', '$2b$10$examplehashedpassword', 'Active');
 
 -- Insert some sample transactions
 INSERT INTO Transactions (book_id, member_id, staff_id, issue_date, due_date, status) VALUES

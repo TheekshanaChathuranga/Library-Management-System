@@ -1,6 +1,6 @@
 -- Drop database if exists and create new
 DROP DATABASE IF EXISTS LibraryManagementSystem;
-CREATE DATABASE LibraryManagementSystem;
+CREATE DATABASE IF NOT EXISTS LibraryManagementSystem;
 USE LibraryManagementSystem;
 
 -- Create Staff table

@@ -2,6 +2,7 @@ USE LibraryManagementSystem;
 
 DELIMITER //
 
+
 -- Get Overdue Books
 DROP PROCEDURE IF EXISTS GetOverdueBooks//
 CREATE PROCEDURE GetOverdueBooks()
@@ -56,7 +57,8 @@ BEGIN
         (SELECT COUNT(*) FROM Transactions WHERE return_date IS NULL) as books_issued,
         (SELECT COUNT(*) FROM Transactions WHERE return_date IS NULL AND due_date < CURDATE()) as overdue_books,
         (SELECT COUNT(*) FROM Transactions WHERE DATE(issue_date) = CURDATE()) as today_issues,
-        (SELECT COUNT(*) FROM Transactions WHERE DATE(return_date) = CURDATE()) as today_returns;
+        (SELECT COUNT(*) FROM Transactions WHERE DATE(return_date) = CURDATE()) as today_returns,
+        (SELECT COUNT(*) FROM Transactions) AS currently_issued;
 END//
 
 -- Search Books
@@ -162,4 +164,77 @@ BEGIN
     GROUP BY b.book_id, b.ISBN, b.title, c.category_name, b.publisher, b.publication_year, b.total_copies, b.available_copies;
 END//
 
+-- Delete Book with Authors
+DROP PROCEDURE IF EXISTS DeleteBookWithAuthors//
+CREATE PROCEDURE DeleteBookWithAuthors(IN p_book_id INT)
+BEGIN
+    -- Delete from Book_Authors
+    DELETE FROM Book_Authors WHERE book_id = p_book_id;
+
+    -- Delete from Transactions
+    DELETE FROM Transactions WHERE book_id = p_book_id;
+
+    -- Delete the book
+    DELETE FROM Books WHERE book_id = p_book_id;
+END//
+
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS IssueBook$$
+CREATE PROCEDURE IssueBook(
+    IN p_book_id INT,
+    IN p_member_id INT,
+    IN p_staff_id INT,
+    IN p_days INT
+)
+BEGIN
+    DECLARE v_available_copies INT;
+
+    -- Check if the book is available
+    SELECT available_copies INTO v_available_copies
+    FROM Books
+    WHERE book_id = p_book_id;
+
+    IF v_available_copies <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Book is not available for issuing';
+    END IF;
+
+    -- Insert the transaction
+    INSERT INTO Transactions (book_id, member_id, staff_id, issue_date, due_date, status)
+    VALUES (p_book_id, p_member_id, p_staff_id, CURDATE(), DATE_ADD(CURDATE(), INTERVAL p_days DAY), 'Issued');
+
+    -- Return the newly created transaction details
+    SELECT 
+        transaction_id,
+        p_book_id AS book_id,
+        p_member_id AS member_id,
+        p_staff_id AS staff_id,
+        CURDATE() AS issue_date,
+        DATE_ADD(CURDATE(), INTERVAL p_days DAY) AS due_date,
+        NULL AS return_date,
+        'Issued' AS status
+    FROM Transactions
+    WHERE transaction_id = LAST_INSERT_ID();
+END$$
+
 DELIMITER ;
+
+
+--Return Book
+DELIMITER $$
+CREATE PROCEDURE ReturnBook (
+    IN p_t_id INT
+)
+BEGIN
+
+    UPDATE transactions
+    SET 
+        return_date = CURDATE(),
+        status = 'Returned'
+    WHERE transaction_id = p_t_id;
+
+    SELECT * FROM transactions WHERE transaction_id = p_t_id;
+END $$
+
+

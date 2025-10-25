@@ -49,7 +49,7 @@ const Dashboard = () => {
                                 <div className="ml-5 w-0 flex-1">
                                     <dl>
                                         <dt className="text-sm font-medium text-gray-500 truncate">Books Issued Today</dt>
-                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.books_issued_today || 0}</dd>
+                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.today_issues || 0}</dd>
                                     </dl>
                                 </div>
                             </div>
@@ -65,7 +65,7 @@ const Dashboard = () => {
                                 <div className="ml-5 w-0 flex-1">
                                     <dl>
                                         <dt className="text-sm font-medium text-gray-500 truncate">Books Returned Today</dt>
-                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.books_returned_today || 0}</dd>
+                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.today_returns || 0}</dd>
                                     </dl>
                                 </div>
                             </div>
@@ -128,8 +128,8 @@ const Dashboard = () => {
                                 </div>
                                 <div className="ml-5 w-0 flex-1">
                                     <dl>
-                                        <dt className="text-sm font-medium text-gray-500 truncate">Pending Fines</dt>
-                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">${stats?.pending_fines || 0}</dd>
+                                        <dt className="text-sm font-medium text-gray-500 truncate">Total Books</dt>
+                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.total_books || 0}</dd>
                                     </dl>
                                 </div>
                             </div>
