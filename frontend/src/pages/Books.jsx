@@ -77,14 +77,18 @@ const Books = () => {
         }
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (bookId) => {
         if (window.confirm('Are you sure you want to delete this book?')) {
             try {
-                await bookAPI.delete(id);
-                toast.success('Book deleted successfully');
-                fetchBooks();
+                const response = await bookAPI.delete(bookId); // Call the delete API
+                if (response.data.success) {
+                    toast.success('Book deleted successfully');
+                    fetchBooks(); // Refresh the book list
+                } else {
+                    toast.error('Failed to delete the book: ' + response.data.message);
+                }
             } catch (error) {
-                toast.error(error.response?.data?.message || 'Failed to delete book');
+                toast.error('An error occurred while deleting the book.');
             }
         }
     };
