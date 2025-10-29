@@ -88,34 +88,36 @@ exports.issueBook = async (req, res) => {
     try {
         const { book_id, member_id, days } = req.body;
         const staff_id = req.user.staff_id;
-        
+
         if (!book_id || !member_id || !days) {
             return res.status(400).json({
                 success: false,
                 message: 'book_id, member_id, and days are required'
             });
         }
-        
-        const [result] = await db.query('CALL IssueBook(?, ?, ?, ?)', 
-            [book_id, member_id, staff_id, days]);
-        
-        if (result[0][0].transaction_id) {
-            res.status(201).json({
-                success: true,
-                message: 'Book issued successfully',
-                data: result[0][0]
-            });
-        } else {
-            res.status(400).json({
+
+        // Call the stored procedure to issue the book
+        const [result] = await db.query('CALL IssueBook(?, ?, ?, ?)', [book_id, member_id, staff_id, days]);
+
+        // Ensure the stored procedure returned the expected result
+        if (!result || result.length === 0) {
+            return res.status(500).json({
                 success: false,
-                message: result[0][0].message
+                message: 'Failed to issue book: No transaction details returned'
             });
         }
+
+        // Respond with the transaction details
+        res.status(201).json({
+            success: true,
+            message: 'Book issued successfully',
+            data: result[0] // Transaction details
+        });
     } catch (error) {
         console.error('Issue book error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to issue book'
+            message: 'An unexpected error occurred while issuing the book'
         });
     }
 };

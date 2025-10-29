@@ -109,38 +109,48 @@ exports.getBookById = async (req, res) => {
 
 exports.addBook = async (req, res) => {
     try {
-        const { isbn, title, category_id, publisher, publication_year, 
-                total_copies, price, authors } = req.body;
-        
+        const { isbn, title, category_id, publisher, publication_year, total_copies, price, authors } = req.body;
+
+        // Validate required fields
         if (!isbn || !title || !total_copies) {
             return res.status(400).json({
                 success: false,
-                message: 'ISBN, title, and total_copies are required'
+                message: 'ISBN, title, and total_copies are required',
             });
         }
-        
+
+        // Convert authors to a comma-separated string if it's an array
         const authorsString = Array.isArray(authors) ? authors.join(',') : authors || '';
-        
-        const [result] = await db.query('CALL AddBook(?, ?, ?, ?, ?, ?, ?, ?)', 
-            [isbn, title, category_id, publisher, publication_year, 
-             total_copies, price, authorsString]);
-        
+
+        // Call the AddBook stored procedure
+        const [result] = await db.query('CALL AddBook(?, ?, ?, ?, ?, ?, ?, ?)', [
+            isbn,
+            title,
+            category_id,
+            publisher,
+            publication_year,
+            total_copies,
+            price,
+            authorsString,
+        ]);
+
+        // Return the created book
         res.status(201).json({
             success: true,
             message: 'Book added successfully',
-            data: result[0][0]
+            data: result[0][0],
         });
     } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({
                 success: false,
-                message: 'Book with this ISBN already exists'
+                message: 'Book with this ISBN already exists',
             });
         }
         console.error('Add book error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to add book'
+            message: 'Failed to add book',
         });
     }
 };
