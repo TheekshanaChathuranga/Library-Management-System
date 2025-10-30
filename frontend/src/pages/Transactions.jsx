@@ -20,6 +20,11 @@ const Transactions = () => {
     const [loading, setLoading] = useState(true);
     const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
     const [filterStatus, setFilterStatus] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState('transaction_id');
+    const [sortOrder, setSortOrder] = useState('desc');
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [selectedTransaction, setSelectedTransaction] = useState(null);
     const user = getCurrentUser();
 
     const [issueFormData, setIssueFormData] = useState({
@@ -126,6 +131,38 @@ const Transactions = () => {
         fetchTransactions(status);
     };
 
+    const handleViewTransaction = (transaction) => {
+        setSelectedTransaction(transaction);
+        setIsViewModalOpen(true);
+    };
+
+    const handleSearch = (e) => {
+        setSearchQuery(e.target.value);
+    };
+
+    const handleSort = (field) => {
+        if (sortBy === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(field);
+            setSortOrder('asc');
+        }
+    };
+
+    const filteredTransactions = transactions.filter(transaction => {
+        const matchesSearch = searchQuery.toLowerCase() === '' ||
+            transaction.book_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            transaction.member_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            transaction.ISBN.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        return matchesSearch;
+    }).sort((a, b) => {
+        const order = sortOrder === 'asc' ? 1 : -1;
+        if (sortBy === 'transaction_id') return (a.transaction_id - b.transaction_id) * order;
+        if (sortBy === 'due_date') return (new Date(a.due_date) - new Date(b.due_date)) * order;
+        return String(a[sortBy]).localeCompare(String(b[sortBy])) * order;
+    });
+
     const handleIssueFormChange = (e) => {
         setIssueFormData({ ...issueFormData, [e.target.name]: e.target.value });
     };
@@ -140,51 +177,137 @@ const Transactions = () => {
     };
 
     const columns = [
-        { header: 'ID', accessor: 'transaction_id' },
-        { header: 'Book Title', accessor: 'book_title' },
-        { header: 'ISBN', accessor: 'ISBN' },
-        { header: 'Member', accessor: 'member_name' },
-        { header: 'Staff', accessor: 'staff_name' },
         { 
-            header: 'Issue Date', 
-            render: (row) => new Date(row.issue_date).toLocaleDateString()
+            header: () => (
+                <div 
+                    className="cursor-pointer flex items-center"
+                    onClick={() => handleSort('transaction_id')}
+                >
+                    ID {sortBy === 'transaction_id' && (
+                        <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                </div>
+            ),
+            accessor: 'transaction_id',
+            className: 'font-medium'
         },
         { 
-            header: 'Due Date', 
-            render: (row) => new Date(row.due_date).toLocaleDateString()
+            header: () => (
+                <div 
+                    className="cursor-pointer flex items-center"
+                    onClick={() => handleSort('book_title')}
+                >
+                    Book Title {sortBy === 'book_title' && (
+                        <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                </div>
+            ),
+            render: (row) => (
+                <div>
+                    <div className="font-medium">{row.book_title}</div>
+                    <div className="text-sm text-gray-500">ISBN: {row.ISBN}</div>
+                </div>
+            )
         },
         { 
-            header: 'Return Date', 
-            render: (row) => row.return_date ? new Date(row.return_date).toLocaleDateString() : '-'
+            header: () => (
+                <div 
+                    className="cursor-pointer flex items-center"
+                    onClick={() => handleSort('member_name')}
+                >
+                    Member {sortBy === 'member_name' && (
+                        <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                </div>
+            ),
+            render: (row) => (
+                <div>
+                    <div className="font-medium">{row.member_name}</div>
+                    <div className="text-sm text-gray-500">Staff: {row.staff_name}</div>
+                </div>
+            )
+        },
+        { 
+            header: () => (
+                <div 
+                    className="cursor-pointer flex items-center"
+                    onClick={() => handleSort('due_date')}
+                >
+                    Dates {sortBy === 'due_date' && (
+                        <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                </div>
+            ),
+            render: (row) => (
+                <div className="space-y-1">
+                    <div className="text-sm">
+                        <span className="font-medium">Issued:</span> {new Date(row.issue_date).toLocaleDateString()}
+                    </div>
+                    <div className="text-sm">
+                        <span className="font-medium">Due:</span> {new Date(row.due_date).toLocaleDateString()}
+                    </div>
+                    {row.return_date && (
+                        <div className="text-sm">
+                            <span className="font-medium">Returned:</span> {new Date(row.return_date).toLocaleDateString()}
+                        </div>
+                    )}
+                </div>
+            )
         },
         {
-            header: 'Status',
-            render: (row) => getStatusBadge(row.status)
-        },
-        {
-            header: 'Days Overdue',
-            render: (row) => {
-                if (row.status === 'Returned' || !row.days_overdue || row.days_overdue <= 0) {
-                    return '-';
-                }
-                return <span className="text-red-600 font-bold">{row.days_overdue}</span>;
-            }
+            header: () => (
+                <div 
+                    className="cursor-pointer flex items-center"
+                    onClick={() => handleSort('status')}
+                >
+                    Status {sortBy === 'status' && (
+                        <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                </div>
+            ),
+            render: (row) => (
+                <div>
+                    {getStatusBadge(row.status)}
+                    {row.status === 'Overdue' && row.days_overdue > 0 && (
+                        <div className="text-sm text-red-600 font-medium mt-1">
+                            {row.days_overdue} days overdue
+                        </div>
+                    )}
+                </div>
+            )
         },
         {
             header: 'Actions',
             render: (row) => (
-                <div className="flex space-x-2">
+                <div className="flex flex-col space-y-2">
+                    <Button 
+                        size="sm"
+                        variant="primary"
+                        className="w-full flex items-center justify-center"
+                        onClick={() => handleViewTransaction(row)}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                        </svg>
+                        View Details
+                    </Button>
                     {row.status === 'Issued' && (user?.role === 'Admin' || user?.role === 'Librarian') && (
                         <Button 
                             size="sm" 
-                            variant="success" 
+                            variant="success"
+                            className="w-full flex items-center justify-center"
                             onClick={() => handleReturnBook(row.transaction_id)}
                         >
-                            Return
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Return Book
                         </Button>
                     )}
                 </div>
-            )
+            ),
+            className: 'w-[140px]'
         }
     ];
 
@@ -205,39 +328,70 @@ const Transactions = () => {
                     )}
                 </div>
 
-                {/* Filter Buttons */}
+                {/* Search and Filter Section */}
                 <Card>
-                    <div className="flex space-x-2">
-                        <Button 
-                            variant={filterStatus === '' ? 'primary' : 'outline'}
-                            onClick={() => handleFilterChange('')}
-                        >
-                            All
-                        </Button>
-                        <Button 
-                            variant={filterStatus === 'Issued' ? 'primary' : 'outline'}
-                            onClick={() => handleFilterChange('Issued')}
-                        >
-                            Issued
-                        </Button>
-                        <Button 
-                            variant={filterStatus === 'Returned' ? 'primary' : 'outline'}
-                            onClick={() => handleFilterChange('Returned')}
-                        >
-                            Returned
-                        </Button>
-                        <Button 
-                            variant={filterStatus === 'Overdue' ? 'primary' : 'outline'}
-                            onClick={() => handleFilterChange('Overdue')}
-                        >
-                            Overdue
-                        </Button>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex-1 max-w-md">
+                                <Input
+                                    type="text"
+                                    placeholder="Search by book title, member name, or ISBN..."
+                                    value={searchQuery}
+                                    onChange={handleSearch}
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="flex space-x-2 ml-4">
+                                <Button 
+                                    variant={filterStatus === '' ? 'primary' : 'outline'}
+                                    onClick={() => handleFilterChange('')}
+                                    className="flex items-center"
+                                >
+                                    <span className="mr-1">All</span>
+                                    {filterStatus === '' && <span className="text-sm">({filteredTransactions.length})</span>}
+                                </Button>
+                                <Button 
+                                    variant={filterStatus === 'Issued' ? 'primary' : 'outline'}
+                                    onClick={() => handleFilterChange('Issued')}
+                                    className="flex items-center"
+                                >
+                                    <span className="mr-1">Issued</span>
+                                    {filterStatus === 'Issued' && <span className="text-sm">({filteredTransactions.length})</span>}
+                                </Button>
+                                <Button 
+                                    variant={filterStatus === 'Returned' ? 'primary' : 'outline'}
+                                    onClick={() => handleFilterChange('Returned')}
+                                    className="flex items-center"
+                                >
+                                    <span className="mr-1">Returned</span>
+                                    {filterStatus === 'Returned' && <span className="text-sm">({filteredTransactions.length})</span>}
+                                </Button>
+                                <Button 
+                                    variant={filterStatus === 'Overdue' ? 'primary' : 'outline'}
+                                    onClick={() => handleFilterChange('Overdue')}
+                                    className="flex items-center text-red-600"
+                                >
+                                    <span className="mr-1">Overdue</span>
+                                    {filterStatus === 'Overdue' && <span className="text-sm">({filteredTransactions.length})</span>}
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </Card>
 
                 {/* Transactions Table */}
                 <Card>
-                    <Table columns={columns} data={transactions} emptyMessage="No transactions found" />
+                    <div className="overflow-x-auto">
+                        <Table 
+                            columns={columns} 
+                            data={filteredTransactions} 
+                            emptyMessage={
+                                searchQuery
+                                    ? "No transactions found matching your search"
+                                    : "No transactions found"
+                            }
+                        />
+                    </div>
                 </Card>
 
                 {/* Issue Book Modal */}
@@ -308,6 +462,86 @@ const Transactions = () => {
                             </Button>
                         </div>
                     </form>
+                </Modal>
+
+                {/* View Transaction Modal */}
+                <Modal
+                    isOpen={isViewModalOpen}
+                    onClose={() => setIsViewModalOpen(false)}
+                    title="Transaction Details"
+                    size="lg"
+                >
+                    {selectedTransaction && (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500">Transaction ID</h3>
+                                    <p className="mt-1">{selectedTransaction.transaction_id}</p>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500">Status</h3>
+                                    <div className="mt-1">{getStatusBadge(selectedTransaction.status)}</div>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500">Book Title</h3>
+                                    <p className="mt-1">{selectedTransaction.book_title}</p>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500">ISBN</h3>
+                                    <p className="mt-1">{selectedTransaction.ISBN}</p>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500">Member</h3>
+                                    <p className="mt-1">{selectedTransaction.member_name}</p>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500">Staff</h3>
+                                    <p className="mt-1">{selectedTransaction.staff_name}</p>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500">Issue Date</h3>
+                                    <p className="mt-1">{new Date(selectedTransaction.issue_date).toLocaleDateString()}</p>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500">Due Date</h3>
+                                    <p className="mt-1">{new Date(selectedTransaction.due_date).toLocaleDateString()}</p>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-medium text-gray-500">Return Date</h3>
+                                    <p className="mt-1">
+                                        {selectedTransaction.return_date 
+                                            ? new Date(selectedTransaction.return_date).toLocaleDateString() 
+                                            : '-'}
+                                    </p>
+                                </div>
+                                {selectedTransaction.status === 'Overdue' && (
+                                    <div>
+                                        <h3 className="text-sm font-medium text-gray-500">Days Overdue</h3>
+                                        <p className="mt-1 text-red-600 font-bold">
+                                            {selectedTransaction.days_overdue}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex justify-end space-x-2 pt-4">
+                                {selectedTransaction.status === 'Issued' && 
+                                (user?.role === 'Admin' || user?.role === 'Librarian') && (
+                                    <Button 
+                                        variant="success"
+                                        onClick={() => {
+                                            handleReturnBook(selectedTransaction.transaction_id);
+                                            setIsViewModalOpen(false);
+                                        }}
+                                    >
+                                        Return Book
+                                    </Button>
+                                )}
+                                <Button variant="secondary" onClick={() => setIsViewModalOpen(false)}>
+                                    Close
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </Modal>
             </div>
         </Layout>
