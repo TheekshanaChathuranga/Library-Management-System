@@ -227,14 +227,39 @@ CREATE PROCEDURE ReturnBook (
     IN p_t_id INT
 )
 BEGIN
+    DECLARE v_book_id INT;
+    DECLARE v_fine DECIMAL(10,2);
+    
+    -- Get book_id before updating
+    SELECT book_id INTO v_book_id
+    FROM Transactions
+    WHERE transaction_id = p_t_id;
 
-    UPDATE transactions
+    -- Update transaction
+    UPDATE Transactions
     SET 
         return_date = CURDATE(),
         status = 'Returned'
     WHERE transaction_id = p_t_id;
+    
+    -- Update book available copies
+    UPDATE Books
+    SET available_copies = available_copies + 1
+    WHERE book_id = v_book_id;
+    
+    -- Calculate fine using function
+    SET v_fine = CalculateFine(p_t_id);
 
-    SELECT * FROM transactions WHERE transaction_id = p_t_id;
+    -- Return transaction details with calculated fine
+    SELECT 
+        t.*,
+        v_fine AS fine_amount,
+        CASE 
+            WHEN v_fine > 0 THEN CONCAT('Book returned successfully. Fine: LKR ', v_fine)
+            ELSE 'Book returned successfully. No fine.'
+        END AS message
+    FROM Transactions t
+    WHERE t.transaction_id = p_t_id;
 END $$
 
 
