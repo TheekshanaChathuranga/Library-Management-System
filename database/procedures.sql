@@ -178,6 +178,8 @@ BEGIN
     DELETE FROM Books WHERE book_id = p_book_id;
 END//
 
+-- Issue Book
+
 DELIMITER $$
 
 DROP PROCEDURE IF EXISTS IssueBook$$
