@@ -2,3 +2,7 @@ node_modules/
 .env
 build/
 .DS_Store
+PROJECT_SUMMARY.md
+QUICKSTART.md
+README.md
+SETUP_GUIDE.md
