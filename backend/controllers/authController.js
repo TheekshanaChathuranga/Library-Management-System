@@ -28,9 +28,11 @@ exports.login = async (req, res) => {
         }
 
         const user = users[0];
+        console.log('Found user:', { username: user.username, role: user.role, passwordHash: user.password_hash });
 
         // Verify password
         const isValidPassword = await bcrypt.compare(password, user.password_hash);
+        console.log('Password verification:', { isValid: isValidPassword, providedPassword: password });
         
         if (!isValidPassword) {
             return res.status(401).json({

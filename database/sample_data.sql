@@ -1,11 +1,11 @@
 USE LibraryManagementSystem;
 
 -- Insert Staff
-INSERT INTO Staff (username, password_hash, first_name, last_name, email, role, hired_date)
+INSERT INTO Staff (username, password_hash, first_name, last_name, email, role, hired_date, status)
 VALUES
-('admin_saman', 'hashed_pwd1', 'Saman', 'Perera', 'saman.perera@library.lk', 'Admin', '2020-01-15'),
-('nimesha_lib', 'hashed_pwd2', 'Nimesha', 'Fernando', 'nimesha.fernando@library.lk', 'Librarian', '2021-03-10'),
-('kasun_lib', 'hashed_pwd3', 'Kasun', 'Jayasinghe', 'kasun.jayasinghe@library.lk', 'Librarian', '2022-06-05');
+('admin_saman', '$2b$10$i4rUH2gnMHNawEOH82BK2OKgcKKMjvorpdtPrTW.hJ.rp9n.Zv91O', 'Saman', 'Perera', 'saman.perera@library.lk', 'Admin', '2020-01-15', 'Active'),
+('nimesha_lib', '$2a$10$pPB3OGAI0gGpwLhhDKYRGeBYSY7UMdOKFKpfYoOi0tB4R.HPC.hzO', 'Nimesha', 'Fernando', 'nimesha.fernando@library.lk', 'Librarian', '2021-03-10', 'Active'),
+('kasun_lib', '$2a$10$e/L.2ANP07H7XMzXEJD2VurekIzicAPBROzkY32AvulrSq59mp8XG', 'Kasun', 'Jayasinghe', 'kasun.jayasinghe@library.lk', 'Librarian', '2022-06-05', 'Active');
 
 -- Insert Categories
 INSERT INTO Categories (category_name)
