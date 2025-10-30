@@ -17,12 +17,28 @@ const pool = mysql.createPool({
 
 // Test connection
 pool.getConnection()
-    .then(connection => {
+    .then(async connection => {
         console.log('✅ Database connected successfully');
+        
+        // Test required stored procedures
+        try {
+            await connection.query('CALL GetDailyStatistics()');
+            console.log('✅ Required stored procedures exist');
+        } catch (err) {
+            console.error('❌ Stored procedure error:', err.message);
+            console.error('Please load the stored procedures from database/procedures.sql');
+        }
+        
         connection.release();
     })
     .catch(err => {
         console.error('❌ Database connection failed:', err.message);
+        console.error('Connection details:', {
+            host: process.env.DB_HOST,
+            port: process.env.DB_PORT,
+            user: process.env.DB_USER,
+            database: process.env.DB_NAME
+        });
         process.exit(1);
     });
 
