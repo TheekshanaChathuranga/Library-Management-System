@@ -1,63 +1,47 @@
 const jwt = require('jsonwebtoken');
-const db = require('../config/database');
 
-exports.authenticate = async (req, res, next) => {
+// Middleware to verify JWT token
+const authenticate = (req, res, next) => {
     try {
-        const authHeader = req.headers.authorization;
-        
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        const token = req.headers.authorization?.split(' ')[1]; // Bearer TOKEN
+
+        if (!token) {
             return res.status(401).json({
                 success: false,
-                message: 'Access token required'
+                message: 'Authentication required. No token provided.'
             });
         }
-        
-        const token = authHeader.split(' ')[1];
+
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        
-        // Verify user still exists and is active
-        const [staff] = await db.query(
-            'SELECT staff_id, username, role, status FROM Staff WHERE staff_id = ?',
-            [decoded.staff_id]
-        );
-        
-        if (staff.length === 0 || staff[0].status !== 'Active') {
-            return res.status(401).json({
-                success: false,
-                message: 'User not found or inactive'
-            });
-        }
-        
-        req.user = decoded;
+        req.user = decoded; // { staff_id, username, role }
         next();
     } catch (error) {
-        if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({
-                success: false,
-                message: 'Token has expired'
-            });
-        }
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid token'
-            });
-        }
-        return res.status(500).json({
+        return res.status(401).json({
             success: false,
-            message: 'Authentication error'
+            message: 'Invalid or expired token'
         });
     }
 };
 
-exports.authorize = (roles) => {
+// Middleware to check user role
+const authorize = (roles = []) => {
     return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({
+        if (!req.user) {
+            return res.status(401).json({
                 success: false,
-                message: 'Access denied. Insufficient permissions'
+                message: 'Authentication required'
             });
         }
+
+        if (roles.length && !roles.includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied. Insufficient permissions.'
+            });
+        }
+
         next();
     };
 };
+
+module.exports = { authenticate, authorize };

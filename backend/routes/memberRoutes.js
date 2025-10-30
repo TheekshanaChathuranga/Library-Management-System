@@ -3,13 +3,21 @@ const router = express.Router();
 const memberController = require('../controllers/memberController');
 const { authenticate, authorize } = require('../middleware/auth');
 
-router.use(authenticate); // All member routes require authentication
+// All routes require authentication
+router.use(authenticate);
 
+// GET routes
 router.get('/', memberController.getAllMembers);
+router.get('/search', memberController.searchMembers);
 router.get('/:id', memberController.getMemberById);
-router.get('/:id/history', memberController.getMemberHistory);
+
+// POST routes (Admin & Librarian only)
 router.post('/', authorize(['Admin', 'Librarian']), memberController.addMember);
+
+// PUT routes (Admin & Librarian only)
 router.put('/:id', authorize(['Admin', 'Librarian']), memberController.updateMember);
+
+// DELETE routes (Admin only)
 router.delete('/:id', authorize(['Admin']), memberController.deleteMember);
 
 module.exports = router;

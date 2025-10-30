@@ -1,121 +1,127 @@
 const db = require('../config/database');
 
+// Get all members
 exports.getAllMembers = async (req, res) => {
     try {
         const { status } = req.query;
         
-        let query = `
-            SELECT 
-                member_id, first_name, last_name, email, phone,
-                membership_type, join_date, expiry_date, status
-            FROM Members
-            WHERE 1=1
-        `;
-        
-        const params = [];
+        let query = 'SELECT * FROM Members';
+        let params = [];
         
         if (status) {
-            query += ` AND status = ?`;
+            query += ' WHERE status = ?';
             params.push(status);
         }
         
-        query += ` ORDER BY last_name, first_name`;
+        query += ' ORDER BY member_id DESC';
         
         const [members] = await db.query(query, params);
-        
+
         res.json({
             success: true,
-            count: members.length,
-            data: members
+            data: members,
+            count: members.length
         });
     } catch (error) {
-        console.error('Get members error:', error);
+        console.error('Get all members error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to fetch members'
+            message: 'Failed to retrieve members'
         });
     }
 };
 
+// Get member by ID
 exports.getMemberById = async (req, res) => {
     try {
-        const [members] = await db.query(
-            'SELECT * FROM Members WHERE member_id = ?',
-            [req.params.id]
-        );
+        const { id } = req.params;
         
+        const [members] = await db.query('SELECT * FROM Members WHERE member_id = ?', [id]);
+
         if (members.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Member not found'
             });
         }
-        
+
+        // Get member's borrowed books
+        const [borrowedBooks] = await db.query(`
+            SELECT 
+                t.transaction_id,
+                t.issue_date,
+                t.due_date,
+                t.return_date,
+                t.status,
+                b.title,
+                b.ISBN,
+                DATEDIFF(CURDATE(), t.due_date) as days_overdue
+            FROM Transactions t
+            JOIN Books b ON t.book_id = b.book_id
+            WHERE t.member_id = ? AND t.return_date IS NULL
+            ORDER BY t.issue_date DESC
+        `, [id]);
+
         res.json({
             success: true,
-            data: members[0]
+            data: {
+                ...members[0],
+                borrowed_books: borrowedBooks
+            }
         });
     } catch (error) {
         console.error('Get member error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to fetch member'
+            message: 'Failed to retrieve member'
         });
     }
 };
 
-exports.getMemberHistory = async (req, res) => {
-    try {
-        const [history] = await db.query('CALL GetMemberHistory(?)', [req.params.id]);
-        
-        res.json({
-            success: true,
-            data: history[0]
-        });
-    } catch (error) {
-        console.error('Get history error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch member history'
-        });
-    }
-};
-
+// Add new member
 exports.addMember = async (req, res) => {
     try {
-        const { first_name, last_name, email, phone, membership_type, address } = req.body;
-        
-        if (!first_name || !last_name || !email) {
+        const { 
+            first_name, 
+            last_name, 
+            email, 
+            phone, 
+            address, 
+            membership_type,
+            join_date,
+            expiry_date 
+        } = req.body;
+
+        if (!first_name || !last_name || !email || !join_date || !expiry_date) {
             return res.status(400).json({
                 success: false,
-                message: 'First name, last name, and email are required'
+                message: 'First name, last name, email, join date, and expiry date are required'
             });
         }
-        
-        const join_date = new Date();
-        const expiry_date = new Date();
-        expiry_date.setFullYear(expiry_date.getFullYear() + 1);
-        
+
         const [result] = await db.query(`
-            INSERT INTO Members (first_name, last_name, email, phone, 
-                                membership_type, join_date, expiry_date, address)
+            INSERT INTO Members (first_name, last_name, email, phone, address, membership_type, join_date, expiry_date)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `, [first_name, last_name, email, phone, membership_type || 'General', 
-            join_date, expiry_date, address]);
-        
+        `, [first_name, last_name, email, phone, address, membership_type || 'General', join_date, expiry_date]);
+
         res.status(201).json({
             success: true,
             message: 'Member added successfully',
-            data: { member_id: result.insertId }
+            data: {
+                member_id: result.insertId,
+                first_name,
+                last_name,
+                email
+            }
         });
     } catch (error) {
+        console.error('Add member error:', error);
         if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({
+            return res.status(400).json({
                 success: false,
-                message: 'Email already exists'
+                message: 'Member with this email already exists'
             });
         }
-        console.error('Add member error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to add member'
@@ -123,29 +129,42 @@ exports.addMember = async (req, res) => {
     }
 };
 
+// Update member
 exports.updateMember = async (req, res) => {
     try {
-        const { first_name, last_name, email, phone, membership_type, status, address } = req.body;
-        
+        const { id } = req.params;
+        const { 
+            first_name, 
+            last_name, 
+            email, 
+            phone, 
+            address, 
+            membership_type,
+            expiry_date,
+            status 
+        } = req.body;
+
         const [result] = await db.query(`
             UPDATE Members 
-            SET first_name = COALESCE(?, first_name),
+            SET 
+                first_name = COALESCE(?, first_name),
                 last_name = COALESCE(?, last_name),
                 email = COALESCE(?, email),
                 phone = COALESCE(?, phone),
+                address = COALESCE(?, address),
                 membership_type = COALESCE(?, membership_type),
-                status = COALESCE(?, status),
-                address = COALESCE(?, address)
+                expiry_date = COALESCE(?, expiry_date),
+                status = COALESCE(?, status)
             WHERE member_id = ?
-        `, [first_name, last_name, email, phone, membership_type, status, address, req.params.id]);
-        
+        `, [first_name, last_name, email, phone, address, membership_type, expiry_date, status, id]);
+
         if (result.affectedRows === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Member not found'
             });
         }
-        
+
         res.json({
             success: true,
             message: 'Member updated successfully'
@@ -159,32 +178,71 @@ exports.updateMember = async (req, res) => {
     }
 };
 
+// Delete member
 exports.deleteMember = async (req, res) => {
     try {
-        const [result] = await db.query('DELETE FROM Members WHERE member_id = ?', [req.params.id]);
-        
+        const { id } = req.params;
+
+        // Check if member has unreturned books
+        const [activeTransactions] = await db.query(
+            'SELECT COUNT(*) as count FROM Transactions WHERE member_id = ? AND return_date IS NULL',
+            [id]
+        );
+
+        if (activeTransactions[0].count > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot delete member with unreturned books'
+            });
+        }
+
+        const [result] = await db.query('DELETE FROM Members WHERE member_id = ?', [id]);
+
         if (result.affectedRows === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Member not found'
             });
         }
-        
+
         res.json({
             success: true,
             message: 'Member deleted successfully'
         });
     } catch (error) {
-        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-            return res.status(400).json({
-                success: false,
-                message: 'Cannot delete member with existing transactions'
-            });
-        }
         console.error('Delete member error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to delete member'
+        });
+    }
+};
+
+// Search members
+exports.searchMembers = async (req, res) => {
+    try {
+        const { q = '' } = req.query;
+        
+        const [members] = await db.query(`
+            SELECT * FROM Members 
+            WHERE 
+                first_name LIKE ? OR 
+                last_name LIKE ? OR 
+                email LIKE ? OR
+                phone LIKE ?
+            ORDER BY member_id DESC
+        `, [`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`]);
+
+        res.json({
+            success: true,
+            data: members,
+            count: members.length
+        });
+    } catch (error) {
+        console.error('Search members error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to search members'
         });
     }
 };

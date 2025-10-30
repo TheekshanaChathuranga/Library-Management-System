@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { reportAPI, transactionAPI } from '../services/api';
 import { toast } from 'react-toastify';
+import Layout from '../components/Layout';
+import StatCard from '../components/StatCard';
+import Card from '../components/Card';
+import Table from '../components/Table';
+import Loading from '../components/Loading';
+import { getDashboardStats, getPopularBooks } from '../services/statsService';
+import { getOverdueBooks } from '../services/transactionService';
+
 const Dashboard = () => {
     const [stats, setStats] = useState(null);
-    const [recentTransactions, setRecentTransactions] = useState([]);
+    const [popularBooks, setPopularBooks] = useState([]);
+    const [overdueBooks, setOverdueBooks] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -12,13 +20,15 @@ const Dashboard = () => {
 
     const fetchDashboardData = async () => {
         try {
-            const [statsRes, transactionsRes] = await Promise.all([
-                reportAPI.getStatistics(),
-                transactionAPI.getAll({ limit: 5 })
+            const [statsRes, popularRes, overdueRes] = await Promise.all([
+                getDashboardStats(),
+                getPopularBooks(5),
+                getOverdueBooks()
             ]);
 
-            setStats(statsRes.data.data);
-            setRecentTransactions(transactionsRes.data.data);
+            if (statsRes.success) setStats(statsRes.data);
+            if (popularRes.success) setPopularBooks(popularRes.data);
+            if (overdueRes.success) setOverdueBooks(overdueRes.data);
         } catch (error) {
             toast.error('Failed to load dashboard data');
         } finally {
@@ -26,168 +36,88 @@ const Dashboard = () => {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            </div>
-        );
-    }
+    if (loading) return <Loading message="Loading dashboard..." />;
+
+    const popularBooksColumns = [
+        { header: 'Title', accessor: 'title' },
+        { header: 'Authors', accessor: 'authors' },
+        { header: 'Category', accessor: 'category_name' },
+        { header: 'Borrowed', accessor: 'borrow_count' },
+        { 
+            header: 'Availability', 
+            render: (row) => `${row.available_copies} / ${row.total_copies}`
+        }
+    ];
+
+    const overdueBooksColumns = [
+        { header: 'Book Title', accessor: 'title' },
+        { header: 'Member', accessor: 'member_name' },
+        { header: 'Issue Date', render: (row) => new Date(row.issue_date).toLocaleDateString() },
+        { header: 'Due Date', render: (row) => new Date(row.due_date).toLocaleDateString() },
+        { 
+            header: 'Days Overdue', 
+            render: (row) => <span className="text-red-600 font-bold">{row.days_overdue}</span>
+        }
+    ];
 
     return (
-        <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-                <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-                
-                <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="bg-white overflow-hidden shadow rounded-lg">
-                        <div className="p-5">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-blue-500 rounded-md p-3">
-                                    <span className="text-white text-xl">📚</span>
-                                </div>
-                                <div className="ml-5 w-0 flex-1">
-                                    <dl>
-                                        <dt className="text-sm font-medium text-gray-500 truncate">Books Issued Today</dt>
-                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.today_issues || 0}</dd>
-                                    </dl>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white overflow-hidden shadow rounded-lg">
-                        <div className="p-5">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
-                                    <span className="text-white text-xl">📖</span>
-                                </div>
-                                <div className="ml-5 w-0 flex-1">
-                                    <dl>
-                                        <dt className="text-sm font-medium text-gray-500 truncate">Books Returned Today</dt>
-                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.today_returns || 0}</dd>
-                                    </dl>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white overflow-hidden shadow rounded-lg">
-                        <div className="p-5">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3">
-                                    <span className="text-white text-xl">👥</span>
-                                </div>
-                                <div className="ml-5 w-0 flex-1">
-                                    <dl>
-                                        <dt className="text-sm font-medium text-gray-500 truncate">Currently Issued</dt>
-                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.currently_issued || 0}</dd>
-                                    </dl>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white overflow-hidden shadow rounded-lg">
-                        <div className="p-5">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-purple-500 rounded-md p-3">
-                                    <span className="text-white text-xl">🏃</span>
-                                </div>
-                                <div className="ml-5 w-0 flex-1">
-                                    <dl>
-                                        <dt className="text-sm font-medium text-gray-500 truncate">Active Members</dt>
-                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.active_members || 0}</dd>
-                                    </dl>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white overflow-hidden shadow rounded-lg">
-                        <div className="p-5">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-yellow-500 rounded-md p-3">
-                                    <span className="text-white text-xl">📚</span>
-                                </div>
-                                <div className="ml-5 w-0 flex-1">
-                                    <dl>
-                                        <dt className="text-sm font-medium text-gray-500 truncate">Available Books</dt>
-                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.available_books || 0}</dd>
-                                    </dl>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white overflow-hidden shadow rounded-lg">
-                        <div className="p-5">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0 bg-red-500 rounded-md p-3">
-                                    <span className="text-white text-xl">💰</span>
-                                </div>
-                                <div className="ml-5 w-0 flex-1">
-                                    <dl>
-                                        <dt className="text-sm font-medium text-gray-500 truncate">Total Books</dt>
-                                        <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats?.total_books || 0}</dd>
-                                    </dl>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <Layout>
+            <div className="space-y-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                    <p className="text-gray-600">Overview of library statistics</p>
                 </div>
 
-                <div className="mt-8">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-medium text-gray-900">Recent Transactions</h2>
-                    </div>
-                    <div className="mt-4 flex flex-col">
-                        <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                            <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-                                <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                                    <table className="min-w-full divide-y divide-gray-300">
-                                        <thead className="bg-gray-50">
-                                            <tr>
-                                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">ID</th>
-                                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Book</th>
-                                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Member</th>
-                                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Issue Date</th>
-                                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Due Date</th>
-                                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200 bg-white">
-                                            {recentTransactions.map((trans) => (
-                                                <tr key={trans.transaction_id}>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{trans.transaction_id}</td>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">{trans.book_title}</td>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">{trans.member_name}</td>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                        {new Date(trans.issue_date).toLocaleDateString()}
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                        {new Date(trans.due_date).toLocaleDateString()}
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm">
-                                                        <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 
-                                                            ${trans.status.toLowerCase() === 'issued' ? 'bg-yellow-100 text-yellow-800' : ''}
-                                                            ${trans.status.toLowerCase() === 'returned' ? 'bg-green-100 text-green-800' : ''}
-                                                            ${trans.status.toLowerCase() === 'overdue' ? 'bg-red-100 text-red-800' : ''}
-                                                        `}>
-                                                            {trans.status}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                {/* Statistics Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard
+                        title="Total Books"
+                        value={stats?.total_books || 0}
+                        icon={<span className="text-2xl">📚</span>}
+                        color="blue"
+                        subtitle={`${stats?.available_books || 0} available`}
+                    />
+                    <StatCard
+                        title="Active Members"
+                        value={stats?.active_members || 0}
+                        icon={<span className="text-2xl">👥</span>}
+                        color="green"
+                    />
+                    <StatCard
+                        title="Books Issued"
+                        value={stats?.books_issued || 0}
+                        icon={<span className="text-2xl">📋</span>}
+                        color="purple"
+                        subtitle={`${stats?.today_issues || 0} today`}
+                    />
+                    <StatCard
+                        title="Overdue Books"
+                        value={stats?.overdue_books || 0}
+                        icon={<span className="text-2xl">⚠️</span>}
+                        color="red"
+                    />
                 </div>
+
+                {/* Popular Books */}
+                <Card title="📈 Popular Books">
+                    <Table 
+                        columns={popularBooksColumns} 
+                        data={popularBooks}
+                        emptyMessage="No popular books data available"
+                    />
+                </Card>
+
+                {/* Overdue Books */}
+                {overdueBooks.length > 0 && (
+                    <Card title="⚠️ Overdue Books">
+                        <Table 
+                            columns={overdueBooksColumns} 
+                            data={overdueBooks}
+                        />
+                    </Card>
+                )}
             </div>
-        </div>
+        </Layout>
     );
 };
 

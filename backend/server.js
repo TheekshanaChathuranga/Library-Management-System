@@ -4,34 +4,43 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
 
+// Import routes
+const authRoutes = require('./routes/authRoutes');
+const bookRoutes = require('./routes/bookRoutes');
+const memberRoutes = require('./routes/memberRoutes');
+const transactionRoutes = require('./routes/transactionRoutes');
+const statsRoutes = require('./routes/statsRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+
+// Initialize express app
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(helmet());
+app.use(helmet()); // Security headers
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
+app.use(express.json()); // Parse JSON bodies
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined')); // Logging
 
-// Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/books', require('./routes/bookRoutes'));
-app.use('/api/members', require('./routes/memberRoutes'));
-app.use('/api/transactions', require('./routes/transactionRoutes'));
-app.use('/api/reports', require('./routes/reportRoutes'));
-
-// Health check
+// Health check route
 app.get('/health', (req, res) => {
     res.json({ 
-        status: 'OK', 
-        timestamp: new Date(),
-        uptime: process.uptime()
+        success: true, 
+        message: 'Library Management System API is running',
+        timestamp: new Date().toISOString()
     });
 });
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/books', bookRoutes);
+app.use('/api/members', memberRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -44,14 +53,25 @@ app.use((req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
     console.error('Error:', err);
+
     res.status(err.status || 500).json({
         success: false,
-        message: err.message || 'Internal Server Error',
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+        message: err.message || 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
 });
 
+// Start server
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+    console.log(`
+╔═══════════════════════════════════════════════════════╗
+║  📚 Library Management System API                     ║
+║  🚀 Server running on port ${PORT}                       ║
+║  🌍 Environment: ${process.env.NODE_ENV || 'development'}                    ║
+║  📡 API URL: http://localhost:${PORT}                    ║
+╚═══════════════════════════════════════════════════════╝
+    `);
 });
+
+module.exports = app;
